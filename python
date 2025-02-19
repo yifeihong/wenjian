@@ -76,3 +76,68 @@ def add(a,b):
     return r
 
 print(add(-123,456))    
+
+
+
+Flask 测试，没有 post man 时可以使用，先启动 flask, 再运行这个文件，注意修改用户名，密码，接口信息
+import platform
+from flask_testing import TestCase
+from app import app
+import requests
+import sys
+
+os_name =  platform.system()
+
+
+if os_name=='Windows':
+    host ='10.119.66.159:5001'
+
+else:
+    host ='10.237.155.61:5001'
+
+USER = '*********'
+PASSWORD = '********'
+AUTH_LOGIN_API = f'http://{host}/login/'
+TEST_API = 'http://127.0.0.1:5001/feature/compare/'
+
+class MyFlaskAppTests(TestCase):
+    def create_app(self):
+        return app
+    def get_token(self,username, password):
+        if not username or not password:
+            error = 'The User name and password cannot be empty.'
+            print( f'ERROR:{error}')
+            sys.exit()
+        try:
+            params = {
+                'username': username,
+                'password': password,
+            }
+            response = requests.post(AUTH_LOGIN_API, data=params)
+            if response.status_code == 200:
+                content = response.json()
+                if content.get('code') == '200' or content.get('code') == 200:
+                    token = content.get('data', {}).get('token')
+                    return token
+            sys.exit()
+        except Exception as e:
+            print(e)
+            sys.exit()
+    def test_post_example(self):
+        base_data = {"feature_id": "1729149228",'cores':'test5','compare':'false','pmu':'ipc'}
+
+        token = self.get_token(USER,PASSWORD)
+        headers = {
+            'Authorization': f'Bearer {token}',
+        }
+        with self.client:        #这里打断点
+            response = self.client.post(
+                TEST_API,
+                data=base_data,
+                content_type='multipart/form-data', headers=headers            )
+            data = response.get_json()        #这里打断点
+            print(data)
+
+if __name__ == '__main__':
+    import unittest
+    unittest.main()
