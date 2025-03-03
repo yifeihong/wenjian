@@ -1,0 +1,101 @@
+// 一维数组
+void myfunc(const int*);
+void myfunc(const int[]);
+void myfunc(const int[10]);
+
+// 二维数组
+void myfunc2(int a[][10]); //一定要指定第二维的维数
+void myfunc2(int (*a)[10]); //也要有第二维的维数
+void myfunc2(int **a); //指针的指针
+
+
+在函数定义中设置默认参数：
+int sum(int a, int b = 20)
+{
+    int result;
+    result = a + b;
+    return (result);
+}
+在函数定义中设置默认参数，则函数定义一定要在函数被调用之前。当函数声明中已经设置默认参数时，不允许在定义中再设置
+
+在函数声明中设置默认参数：
+int sum(int a, int b = 20);
+
+默认参数的右边不允许出现非默认参数，
+在调用时，如果其中一个形参不想采用默认参数，其左边的参数都必须显式给与一个值。
+
+例如：
+int sum(int a, int b = 20, int c = 30);
+如果想要传一个c=40，而参数b不变，则必须
+sum(10, 20, 40)，
+而不能
+sum(10, 40)
+
+
+extern 有两种用法，在修饰函数或者变量的时候，告知编译器该函数或变量已在别处定义，可以放心编译构建；
+例如文件header.h:                            
+extern int i;
+extern int test();
+
+文件header.cpp
+int i = 3;
+int test()
+{
+    return 10;
+}
+
+文件main.cpp：
+#include<iostream>
+extern int i;
+extern int test();
+int main()
+{
+    std::cout << i << std::endl;
+    std::cout << test() << std::endl;
+}
+输出3 和 10，注意这里并没有include header.h
+
+
+所有实参类型相同：使用initializer_list标准库：
+
+void error_msg(initializer_list<string> msg);
+error_msg({ “123”, str1, str2 });//花括号不能去掉
+所有实参类型不同：可变参数模板
+void foo(int dwFixedArg, ...)
+{ //省略符 
+    va_list pArgs = NULL;
+    va_start(pArgs, dwFixedArg);
+    int dwVarArg = va_arg(pArgs, int);
+    int dwVarArg2 = va_arg(pArgs, char);
+    va_end(pArgs);
+}
+
+bool(*pf)(const std::string, const std::string);
+bool f(const std::string, const std::string)
+{
+    return false;
+}
+
+// 含义： pf指向一个返回值是bool的函数指针，在使用的时候，先给指针赋一个值，然后和普通函数一样使用：
+
+pf = &f;
+bool hr = pf("123345", "887654");
+
+
+namespace AVeryVeryLongName {
+    namespace AnotherVeryVeryLongNameForTest {
+        int val = 1;
+    };
+    int val2 = AnotherVeryVeryLongNameForTest::val;
+};
+int val3 = AVeryVeryLongName::AnotherVeryVeryLongNameForTest::val;
+int val4 = AVeryVeryLongName::val2; // 如果每一个变量都这样写，所有的赋值代码就太长了 X
+                                    // 定义命名空间别名
+namespace Long = AVeryVeryLongName::AnotherVeryVeryLongNameForTest;
+namespace Long2 = AVeryVeryLongName;
+int val5 = Long::val;
+int val6 = Long2::val2;  // 使用简短的命名空间别名    √
+
+当命名空间的内容只想在本文件使用的时候，可以使用匿名命名空间，编译器会给这个匿名命名空间一个唯一的名字，并且在本文件中使用using namespace。这样本文件也就不需要添加命名空间名字了。匿名命名空间和static的作用相似，但是看起来更加简洁。
+
+
