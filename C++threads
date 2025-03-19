@@ -1,0 +1,140 @@
+C++11多线程编程
+C++ 11 标准中新引入了与多线程编程相关的多个头文件，包括 <thread>、<mutex>、<future>、<condition_variable> 和 <atomic>。
+
+当我们在 Linux 环境中编写 C++ 的多线程程序时，既可以借助 POSIX （可移植操作系统接口（Portable Operating System Interface of UNIX））标准提供的 <pthread.h> 实现，也可以借助 C++11 标准提供的头文件实现
+
+线程的创建和使用
+C++11 标准中，<thread>头文件提供了 thread 类（位于 std 命令空间中），专门用来完成线程的创建和使用。
+1) 创建线程
+一个线程可以用 thread 类的对象来表示，thread类中重载了多种构造函数，最常用的有以下两个：
+
+//1、Fn 表示线程要执行的函数，args 表示向 Fn 传递的多个参数，此构造函数支持泛型
+template <class Fn, class... Args>
+explicit thread (Fn&& fn, Args&&... args);
+//2、移动构造函数
+thread (thread&& x) noexcept;
+注意，thread 类只提供了移动构造函数，未提供拷贝构造函数。这意味着，我们不能直接将一个事先定义好的 thread 对象赋值给另一个 thread 对象，但可以将临时的（匿名的）thread 对象赋值给另一个 thread 对象。有关移动构造函数，读者可阅读《C++11移动构造函数详解》一文做详细了解。
+
+POSIX 标准中，线程所执行函数的参数和返回值都必须为 void* 类型。而 thread 类创建的线程可以执行任意的函数，即不对函数的参数和返回值做具体限定。
+
+2) 线程的使用
+除了 join() 成员函数外，thread 类还提供有很多实用的成员函数，表 1 给大家列出了几个最常用的函数：
+
+表 1 thread 类的常用成员函数
+成员函数	功 能
+get_id()	获取当前 thread 对象的线程 ID。
+joinable()	判断当前线程是否支持调用 join() 成员函数。
+join()	阻塞当前 thread 对象所在的线程，直至 thread 对象表示的线程执行完毕后，所在线程才能继续执行。
+detach()	将当前线程从调用该函数的线程中分离出去，它们彼此独立执行。
+swap()	交换两个线程的状态。
+
+注意，每个thread 对象在调用析构函数销毁前，要么调用 join() 函数令主线程等待子线程执行完成，要么调用 detach() 函数将子线程和主线程分离，两者比选其一，否则程序可能存在以下两个问题：
+•	线程占用的资源将无法全部释放，造成内存泄漏；
+•	当主线程执行完成而子线程未执行完时，程序执行将引发异常。
+
+<thread>头文件中不仅定义了 thread 类，还提供了一个名为 this_thread 的命名空间，此空间中包含一些功能实用的函数，如表 2 所示
+
+表 2 this_thread命名空间常用函数
+函数	功 能
+get_id()	获得当前线程的 ID。
+yield()	阻塞当前线程，直至条件成熟。
+sleep_until()	阻塞当前线程，直至某个时间点为止。
+sleep_for()	阻塞当前线程指定的时间（例如阻塞 5 秒）。
+
+std::thread
+在C++11之前，C++语言层面是不支持多线程的，想利用C++实现并发程序，借助操作系统的API实现跨平台的并发程序存在着诸多不便，当C++11在语言层面支持多线程后，编写跨平台的多线程代码就方便了许多。
+C++11提供的std::thread在开发多线程方面带来了便捷。
+#include <iostream>
+#include <thread>
+
+void threadfunc()
+{
+        std::cout << "thread func" << std::endl;
+}
+
+
+int main()
+{
+    std::thread t1(threadfunc);
+    t1.join();   //等待threadfunc运行结束
+ 
+    return 0;
+}
+
+首先定义线程对象t1，线程函数threadfunc运行在线程对象t1中，当线程创建成功并执行线程函数后，一定要保证线程函数运行结束才能退出，这里调用了join()函数阻塞线程，直到threadfunc()运行结束，回收对应创建线程的资源。如果不阻塞线程，就不能保证线程对象t1在threadfunc()运行期间有效
+std::move(t1)
+通过std::thread创建的线程是不可以复制的，但是可以移动。
+#include <iostream>
+#include <thread>
+#include <chrono>
+
+void threadfunc()
+{
+   
+    std::cout << "move thread func" << std::endl;
+    
+}
+
+int main()
+{
+    std::thread t1(threadfunc);
+    std::thread t2(std::move(t1));
+   
+    t2.join();
+    while (true)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));//睡眠1000毫秒
+        break;
+    }
+    
+    return 0;
+}
+输出结果：
+move thread func
+移动后t1就不代表任何线程了，t2对象代表着线程threadfunc()
+std::bind
+还可以通过std::bind来创建线程函数。
+
+#include <iostream>
+#include <thread>
+#include <chrono>     //时间
+#include <functional>  //std::bind
+
+class A {
+public:
+    void threadfunc()
+    {
+        std::cout << "bind thread func" << std::endl;
+    }
+};
+
+int main()
+{
+    A a;
+    std::thread t1(std::bind(&A::threadfunc,&a));
+    t1.join();
+    while (true)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));//睡眠1000毫秒
+        break;
+    }
+    
+    return 0;
+}
+
+创建一个类A，然后再main函数中将类A中的成员函数绑定到线程对象t1上，运行结果：
+bind thread func
+
+get_id()
+std::this_thread::get_id()获取的是当前线程的ID，t1.get_id()获取的是所创建的t1对象中运行的线程ID，对应的ID分别为：
+
+
+std::mutex
+在C++11中提供了4中互斥量。
+std::mutex;                  //非递归的互斥量
+std::timed_mutex;            //带超时的非递归互斥量
+std::recursive_mutex;        //递归互斥量
+std::recursive_timed_mutex;  //带超时的递归互斥量
+
+
+func()中再执行逻辑处理中程序因为某些原因退出了，此时就无法unlock()了，这样其他线程也就无法获取std::mutex，造成死锁现象，其实在加锁之前可以通过trylock()尝试一下能不能加锁。实际开发中，通常也不会这样写代码，而是采用lock_guard来控制std::mutex。
