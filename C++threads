@@ -138,3 +138,62 @@ std::recursive_timed_mutex;  //带超时的递归互斥量
 
 
 func()中再执行逻辑处理中程序因为某些原因退出了，此时就无法unlock()了，这样其他线程也就无法获取std::mutex，造成死锁现象，其实在加锁之前可以通过trylock()尝试一下能不能加锁。实际开发中，通常也不会这样写代码，而是采用lock_guard来控制std::mutex。
+
+lock_guard
+lock_guard是类模板，在其构造函数中自动给std::mutex加锁，在退出作用域的时候自动解锁，这样就可以保证std::mutex的正确操作，这也是RAII（获取资源便初始化）技术的体现。
+
+// lock_guard 是std中定义好了的
+
+
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include <chrono>
+
+std::mutex g_mutex;
+
+void func()
+{
+    std::lock_guard<std::mutex> lock(g_mutex);   //加锁
+
+    std::cout << "entry func test thread ID is : " << std::this_thread::get_id() << std::endl;
+    
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    
+    std::cout << "leave func test thread ID is : " << std::this_thread::get_id() << std::endl;
+
+   //退出作用域后，lock_guard对象析构就自动解锁
+}
+int main()
+{
+    std::thread t1(func);
+    std::thread t2(func);
+    std::thread t3(func);
+    std::thread t4(func);
+    std::thread t5(func);
+
+    t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
+    t5.join();
+
+    return 0;
+}
+unique_lock
+std::unique_lock比std::lock_guard更灵活，这种灵活性主要体现在以下几点：
+
+lock_guard在构造时或者构造前（std::adopt_lock）就已经获取互斥锁，并且在作用域内保持获取锁的状态，直到作用域结束；而unique_lock在构造时或者构造后（std::defer_lock）获取锁，在作用域范围内可以手动获取锁和释放锁，作用域结束时如果已经获取锁则自动释放锁。
+lock_guard锁的持有只能在lock_guard对象的作用域范围内，作用域范围之外锁被释放，而unique_lock对象支持移动操作，可以将unique_lock对象通过函数返回值返回，这样锁就转移到外部unique_lock对象中，延长锁的持有时间。
+由于unique_lock对象需要根据当前对象是否已经持有锁还是未持有进行判断从而执行适当的操作，因此比lock_guard占用空间稍大一点，效率稍低一点，std::unique_lock.owns_lock返回当前是否持有锁。
+通常来说不应该在持有锁的期间执行消耗时间长的操作，此时unique_lock更加灵活，可以随时unlock，避免不相关的操作期间仍然持有锁。
+std::condition_variable
+条件变量是C++11提供的另外一种线程同步机制，通过判断条件是否满足，决定是否阻塞线程，当线程执行条件满足的时候就会唤醒阻塞的线程，常与std::mutex配合使用，C++11提供了两种条件变量。
+•	std::condition_variable，配合std::unique_lock<std::mutex>使用，通过wait()函数阻塞线程；
+•	std::condition_variable_any，可以和任意带有lock()、unlock()语义的std::mutex搭配使用，比较灵活，但是其效率不及std::condition_variable；
+std::unique_lock：C++11提供的 std::unique_lock 是通用互斥包装器，允许延迟锁定、锁定的有时限尝试、递归锁定、所有权转移和与条件变量一同使用。std::unique_lock比std::lock_guard使用更加灵活，功能更加强大。使用std::unique_lock需要付出更多的时间、性能成本。
+thread_local
+C++11中提供了thread_local，thread_local定义的变量在每个线程都保存一份副本，而且互不干扰，在线程退出的时候自动销毁。
+
+
+
