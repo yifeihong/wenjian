@@ -99,3 +99,66 @@ int val6 = Long2::val2;  // 使用简短的命名空间别名    √
 当命名空间的内容只想在本文件使用的时候，可以使用匿名命名空间，编译器会给这个匿名命名空间一个唯一的名字，并且在本文件中使用using namespace。这样本文件也就不需要添加命名空间名字了。匿名命名空间和static的作用相似，但是看起来更加简洁。
 
 
+左值与右值：
+左值是在作用域内表达式运行结束后依然存在的持久对象，它有确切的地址能够在程序中被访问
+右值指表达式结束后就不再存在的临时对象，C++进一步划分为纯右值与将亡值
+纯右值指字面量或者求值结果相当于字面量或匿名临时变量、非引用返回的临时变量等，它没有地址可供访问
+将亡值指即将被销毁，却能够被移动的值，它有地址但是仅编译器能够操作，程序不可访问，它的资源可以被复用
+
+右值引用与左值引用：
+使用std::move方法将左值转为右值
+
+移动语义：
+定义移动构造和移动赋值函数避免无意义的拷贝操作。
+
+完美转发：
+右值引用是左值，使用std::forward方法解决右值无法转发问题（引用坍缩）
+void reference(int& v) 
+{
+    std::cout << "左值" << std::endl;
+}
+void reference(int&& v)
+{
+    std::cout << "右值" << std::endl;
+}
+template <typename T>
+void pass(T&& v) 
+{
+    std::cout << "普通传参:";
+    reference(v); // 始终调用 reference(int&)
+}
+int main() 
+{
+    std::cout << "传递右值:" << std::endl;
+    pass(1); // 1是右值, 但输出是左值
+
+    std::cout << "传递左值:" << std::endl;
+    int l = 1;
+    pass(l); // l 是左值, 输出左值
+
+    return 0;
+}
+
+
+void reference(int& v) 
+{
+    std::cout << "左值引用" << std::endl;
+}
+void reference(int&& v)
+ {
+    std::cout << "右值引用" << std::endl;
+}
+
+template <typename T>
+void pass(T&& v) 
+{
+    std::cout << "              普通传参: ";
+    reference(v);
+    std::cout << "       std::move 传参: ";
+    reference(std::move(v));
+    std::cout << "    std::forward 传参: ";
+    reference(std::forward<T>(v));
+    std::cout << "static_cast<T&&> 传参: ";
+    reference(static_cast<T&&>(v));
+}
+
