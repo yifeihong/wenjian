@@ -197,3 +197,26 @@ C++11中提供了thread_local，thread_local定义的变量在每个线程都保
 
 
 
+#include <iostream>
+#include <thread>
+#include <atomic>
+
+std::atomic<int> atomicCounter(0);
+
+void incrementCounter() {
+    for (int i = 0; i < 10000; ++i) {
+        // atomicCounter = atomicCounter + 1;  // 结果不正确
+        // atomicCounter.fetch_add(1);  // 正确
+        atomicCounter++;  // 正确
+    }
+}
+
+int main() {
+    std::thread t1(incrementCounter);
+    std::thread t2(incrementCounter);
+    t1.join();
+    t2.join();
+
+    std::cout << "Final Counter Value: " << atomicCounter << std::endl;
+    return 0;
+}
